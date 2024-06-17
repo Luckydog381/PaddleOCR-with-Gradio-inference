@@ -1,0 +1,4 @@
+gradio
+paddleocr
+paddlepaddle -i https://pypi.tuna.tsinghua.edu.cn/simple
+httpx==0.25.0
