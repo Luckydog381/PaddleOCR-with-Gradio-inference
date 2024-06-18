@@ -18,7 +18,7 @@ def test_image_display():
     dummy_data = {"dummy": "data"}  # Placeholder for the JSON output
     return image, dummy_data
 
-def process_image(pdf_file, url, sheet_name, lang,  use_angle_cls, det_db_thresh,
+def process_image(pdf_file, lang,  use_angle_cls, det_db_thresh,
                   det_db_box_thresh, det_db_unclip_ratio, max_batch_size, det_limit_side_len, 
                   det_db_score_mode, dilation, ocr_version):
     """Xử lý hình ảnh và trích xuất dữ liệu."""
@@ -38,25 +38,25 @@ def process_image(pdf_file, url, sheet_name, lang,  use_angle_cls, det_db_thresh
           max_batch_size=max_batch_size, det_limit_side_len=det_limit_side_len, 
           det_db_score_mode=det_db_score_mode, dilation=dilation, ocr_version=ocr_version)
     result, time_taken = ocr.perform_ocr()
-    extracted_text = ocr.extract_text(result)
-    processed_image = ocr.draw_and_save_results_pdf(result)  # Hàm này giờ trả về list PIL images
+    try:
+        extracted_text = ocr.extract_text(result)
+    except Exception as e:
+        return [], "No text detected."
+    processed_images = ocr.draw_and_save_results_pdf(result)  # Hàm này giờ trả về list PIL images
     
-    image_obj = Image.new('RGB', (100, 100))
-    if isinstance(processed_image, Image.Image):
+    if isinstance(processed_images, Image.Image):
       print("Đối tượng là một instance của PIL Image.")
     else:
       print("Đối tượng không phải là một instance của PIL Image.")
 
-    return processed_image, extracted_text
+    return processed_images, extracted_text
 
 # Tạo Gradio interface
 iface = gr.Interface(
     process_image,
    [
     gr.File(label="Upload Image or Take a Picture"),
-    gr.Text(label="Google Sheet URL"),
-    gr.Text(label="Sheet Name"),
-    gr.Dropdown(choices=['en', 'japan', 'ch'], label="Language", value='en'),
+    gr.Dropdown(choices=['en', 'japan', 'ch'], label="Language", value='japan'),
     gr.Checkbox(label="Use Angle Classification", value=True),
     gr.Slider(minimum=0.1, maximum=0.9, step=0.1, value=0.4, label="Detection DB Threshold"),
     gr.Slider(minimum=0.1, maximum=0.9, step=0.1, value=0.5, label="Detection DB Box Threshold"),
@@ -67,9 +67,9 @@ iface = gr.Interface(
     gr.Checkbox(label="Use Dilation", value=False),
     gr.Dropdown(choices=['PP-OCRv3', 'PP-OCRv4'], label="OCR Version", value='PP-OCRv4'),
     ],
-    outputs=[gr.Gallery(type="pil", label="Processed Image"), gr.Text(label="Extracted Data")],
+    outputs=[gr.Gallery(type="pil", label="Processed Image",format="jpeg"), gr.Text(label="Extracted Data")],
     title="OCR and Data Extraction Demo",
-    description="Upload an image or take a picture to extract data and update it to Google Sheets."
+    description="Upload an image or take a picture to extract data."
 )
 
 # Chạy ứng dụng 
