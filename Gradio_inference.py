@@ -1,11 +1,8 @@
 import gradio as gr
 from PIL import Image,ImageDraw
-import os
-import json
 from OCR_Process import OCR  # Giả định bạn đã có sẵn class này
 from dotenv import load_dotenv
 
-from dotenv import load_dotenv
 
 load_dotenv(".venv")
 
