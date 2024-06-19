@@ -1,4 +1,5 @@
-from paddleocr import PaddleOCR, draw_ocr
+from paddleocr import PaddleOCR
+from draw_result import draw_ocr
 from VisualizeOCR import OCRVisualization
 from PIL import Image
 import cv2
