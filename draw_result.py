@@ -1,58 +1,64 @@
-from PIL import Image
-from paddleocr import draw_ocr
 import cv2
 import numpy as np
-import fitz
-import os
+from PIL import Image, ImageDraw, ImageFont
+import math
 
-
-def draw_and_save_results_pdf(self, result):
+def draw_ocr(image,
+             boxes,
+             txts=None,
+             scores=None,
+             drop_score=0.5,
+             font_path="./doc/fonts/simfang.ttf",
+             font_size=12):
+    
     """
-    Draw and save the OCR results to a PDF file.
-    Args:result: list of OCR results
-         PAGE_NUM: number of pages to process
-    Returns: list of PIL images 
+    Visualize the results of OCR detection and recognition
+    args:
+        image(Image|array): RGB image
+        boxes(list): boxes with shape(N, 4, 2)
+        txts(list): the texts
+        scores(list): txxs corresponding scores
+        drop_score(float): only scores greater than drop_threshold will be visualized
+        font_path: the path of font which is used to draw text
+        font_size: the size of font
+    return(array):
+        the visualized img
     """
-    
-    # Get the file name and create output file name
-    filename = os.path.basename(self.file_path)
-    new_filename = "result_" + filename
-    output_folder = './outputs/'
-    output_path = os.path.join(output_folder, new_filename)
-    
-    # Get the pdf page numbers
-    with fitz.open(self.file_path) as pdf:
-        PAGE_NUM = pdf.page_count
 
-    # Create a list to store the images
-    imgs = []
-    im_show_list = []
+    # Ensure image is a numpy array
+    if isinstance(image, Image.Image):
+        image = np.array(image)
 
-    # Open the PDF file
-    with fitz.open(self.file_path) as pdf:
-        for pg in range(0, PAGE_NUM):
-            page = pdf[pg]
-            mat = fitz.Matrix(2, 2)
-            pm = page.get_pixmap(matrix=mat, alpha=False)
-            # if width or height > 2000 pixels, don't enlarge the image
-            if pm.width > 2000 or pm.height > 2000:
-                pm = page.get_pixmap(matrix=fitz.Matrix(1, 1), alpha=False)
-            img = Image.frombytes("RGB", [pm.width, pm.height], pm.samples)
-            img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-            imgs.append(img)
+    # Convert image to RGB if it's not already
+    if len(image.shape) == 2 or image.shape[2] == 1:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     
-    # Draw and save the OCR results
-    for idx in range(len(result)):
-        res = result[idx]
-        if res == None:
+    # Load your custom font
+    font = ImageFont.truetype(font_path, font_size)
+
+    for i, box in enumerate(boxes):
+        if scores[i] < drop_score or math.isnan(scores[i]):
             continue
-        image = imgs[idx]
-        boxes = [line[0] for line in res]
-        txts = [line[1][0] for line in res]
-        scores = [line[1][1] for line in res]
-        im_show = draw_ocr(image, boxes, txts, scores, font_path='./japan.ttc')
-        im_show = Image.fromarray(im_show)
-        im_show_list.append(im_show)
-        im_show.save(output_path + '_page_{}.jpg'.format(idx))
 
-    return im_show_list
+        # Draw the bounding box
+        box = np.array(box).astype(np.int32)
+        image = cv2.polylines(image, [box], True, (255, 0, 0), 2)
+
+        # Convert OpenCV image to PIL Image for drawing text
+        pil_image = Image.fromarray(image)
+        draw = ImageDraw.Draw(pil_image)
+
+        # Calculate the position for the text (above the bounding box)
+        text_position = (int(box[0][0]), int(box[0][1]) - 10)  # Adjust Y-offset as needed
+
+        # Draw the text on the image using Pillow
+        draw.text(text_position, str(txts[i]), (0, 0, 0), font=font)
+
+        # Convert PIL Image back to OpenCV image
+        image = np.array(pil_image)
+
+    return image
+
+# Example usage:
+# image = cv2.imread('path_to_your_image.jpg')  # Load your image
+# visualize_boxes(image, boxes, txts, scores, drop_score, font_path)
